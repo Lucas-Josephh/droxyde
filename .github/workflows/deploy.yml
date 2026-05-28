@@ -32,7 +32,8 @@ jobs:
             echo "::error::Missing RENDER_DEPLOY_HOOK_URL secret"
             exit 1
           fi
-          response=$(curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL")
+          echo "Triggering Render deploy for SHA ${{ github.event.workflow_run.head_sha }}"
+          response=$(curl -fsS -w "\nHTTP %{http_code}" -X POST "$RENDER_DEPLOY_HOOK_URL")
           echo "Render response: $response"
 
   deploy-frontend:
@@ -49,5 +50,6 @@ jobs:
             echo "::error::Missing VERCEL_DEPLOY_HOOK_URL secret"
             exit 1
           fi
-          response=$(curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL")
+          echo "Triggering Vercel production deploy for SHA ${{ github.event.workflow_run.head_sha }}"
+          response=$(curl -fsS -w "\nHTTP %{http_code}" -X POST "$VERCEL_DEPLOY_HOOK_URL")
           echo "Vercel response: $response"

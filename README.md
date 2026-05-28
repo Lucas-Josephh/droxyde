@@ -171,6 +171,10 @@ Add these in the Render service → **Environment**:
 
 Render free instances cold-start (~30 s). For an always-on backend, switch to the paid Starter plan. The health check at `/api/health` helps Render decide when an instance is ready after a deploy.
 
+### 6.6 — `render.yaml` (reference)
+
+The repo root [`render.yaml`](./render.yaml) documents the correct **build** / **start** commands for this monorepo (`@droxyde/api`, not legacy names like `backend` or `@repo/types`). If your Render dashboard still shows `No projects matched the filters`, replace the build command with the one in §6.1 or sync via Blueprint.
+
 ---
 
 ## 7. Deploy to **Vercel** (frontend — Next.js)
@@ -179,7 +183,7 @@ Render free instances cold-start (~30 s). For an always-on backend, switch to th
 
 1. Vercel Dashboard → **Add New** → **Project** → import this repo.
 2. **Framework Preset**: Next.js
-3. **Root Directory**: `apps/web` (click _Edit_ and pick the folder)
+3. **Root Directory**: `apps/frontend` (click _Edit_ and pick the folder — not `apps/web`)
 4. **Build Command**: _(leave default, Vercel auto-detects `next build`)_
 5. **Install Command**: `pnpm install --frozen-lockfile`
 6. **Output Directory**: _(leave default)_
@@ -189,19 +193,21 @@ Render free instances cold-start (~30 s). For an always-on backend, switch to th
 
 ### 7.2 — **Disable Git auto-deploy on `main`** (critical!)
 
-Two options — pick **one**:
+Use [`apps/frontend/vercel.json`](./apps/frontend/vercel.json) — it disables production deploys on Git pushes to `main` but **still allows Deploy Hooks** (unlike Ignored Build Step `exit 0`, which skips hook builds too).
 
-- **Project Settings → Git → Ignored Build Step**: paste the script below. It tells Vercel to skip every git-triggered build; only deploys triggered by our deploy hook (which sends a `GIT_BRANCH` header it ignores) or by us manually will run.
+```json
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
+  }
+}
+```
 
-  ```bash
-  echo "Skipping — deploys are CI-gated via GitHub Actions" && exit 0
-  ```
+In Vercel → **Project Settings → Git → Ignored Build Step**: **clear the field** (leave empty). If you previously pasted `exit 0` there, hooks were queued but the build was skipped — that matches “Deploy green in Actions, nothing compiles on Vercel”.
 
-  **Limitation**: this also skips Preview Deployments on PRs.
-
-- **Better option for keeping previews**: keep production deploys gated by your CI, by enabling “Only deploy production from this branch” = `__never__` (a non-existent branch) **OR** by using **Vercel’s “Deploy Hooks”** for prod **and** unchecking _Production_ in `Settings → Git → Production Branch` so only previews get auto-deployed.
-
-> Simplest setup: pick the first option for now. PR previews can be re-enabled later by removing the ignored build step.
+Preview deployments on other branches still work via Git unless you disable them separately.
 
 ### 7.3 — Create the Deploy Hook (production)
 
@@ -278,3 +284,7 @@ chore: bump turbo to 2.3.4
 | CORS error in browser                         | `FRONTEND_URL` mismatch                        | Must match the origin exactly (scheme + host, no path)                |
 | Web deploys still trigger from git pushes     | Forgot to set the Ignored Build Step on Vercel | See section 7.2                                                       |
 | Backend deploys still trigger from git pushes | Auto-Deploy still on in Render                 | See section 6.2                                                       |
+| Render: `No projects matched the filters`   | Outdated build command (`backend`, `@repo/types`) | Use `pnpm --filter @droxyde/api... build` — see `render.yaml` / §6.7 |
+| Render: `Cannot find module dist/main.js`   | API never built (filters above)                | Fix build command; `dist/main.js` must exist before start           |
+| Vercel: no deploy after green CI            | Missing hook secret or Deploy workflow failed  | Check Actions → **Deploy**; set `VERCEL_DEPLOY_HOOK_URL`              |
+| Vercel: hook fires but build skipped        | Ignored Build Step `exit 0` blocks hooks too     | Clear Ignored Build Step; use `apps/frontend/vercel.json` instead     |

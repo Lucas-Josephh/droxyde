@@ -1,0 +1,29 @@
+# Render Blueprint — backend API (monorepo root)
+# https://render.com/docs/blueprint-spec
+#
+# After merging, link this Blueprint in Render OR paste build/start commands
+# from README section 6 into your existing Web Service settings.
+
+services:
+  - type: web
+    name: droxyde-api
+    runtime: node
+    region: frankfurt
+    plan: starter
+    branch: main
+    autoDeploy: false
+    healthCheckPath: /api/health
+    buildCommand: >-
+      corepack enable &&
+      corepack prepare pnpm@10.33.2 --activate &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @droxyde/api... build &&
+      pnpm --filter @droxyde/api prisma:migrate:deploy
+    startCommand: pnpm --filter @droxyde/api start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Set in Render dashboard (secrets):
+      # DATABASE_URL, DIRECT_URL, SESSION_SECRET, FRONTEND_URL
