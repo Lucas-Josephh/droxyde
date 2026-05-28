@@ -1,0 +1,29 @@
+{
+  "name": "@droxyde/types",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -b --watch",
+    "clean": "rimraf dist .turbo tsconfig.tsbuildinfo",
+    "lint": "echo 'no lint configured for @droxyde/types'",
+    "type-check": "tsc --noEmit",
+    "test": "echo 'no tests for @droxyde/types' && exit 0"
+  },
+  "devDependencies": {
+    "@droxyde/tsconfig": "workspace:*",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2"
+  }
+}
