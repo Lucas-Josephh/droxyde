@@ -114,7 +114,7 @@ The pipeline is a two-step process driven entirely by GitHub Actions:
    - `type-check`, `lint`, `build`, `test`, `test:e2e`
 2. **Deploy** (`.github/workflows/deploy.yml`) — runs **only when CI succeeds on a push to `main`** via `workflow_run`:
    - Calls the **Render Deploy Hook** → rebuilds the backend
-   - Calls the **Vercel Deploy Hook** → rebuilds the frontend
+   - Runs **`vercel build` + `vercel deploy --prebuilt --prod`** for the frontend (monorepo-safe)
 
 > Because deploys are triggered exclusively by these hooks, **you must disable the native auto-deploy** on both Vercel and Render (see below). Otherwise both providers would deploy on every push, bypassing the CI gate.
 
@@ -184,12 +184,9 @@ The repo root [`render.yaml`](./render.yaml) documents the correct **build** / *
 1. Vercel Dashboard → **Add New** → **Project** → import this repo.
 2. **Framework Preset**: Next.js
 3. **Root Directory**: `apps/frontend` (not `apps/web` — that folder does not exist)
-4. **Framework Preset**: **Next.js**
-5. **Build Command**: leave empty (uses [`apps/frontend/vercel.json`](./apps/frontend/vercel.json))
-6. **Install Command**: leave empty (same)
-7. **Output Directory**: **must be empty** — do not set `.next` or `apps/frontend/.next` (causes `X-Vercel-Error: NOT_FOUND` on every route)
-8. Enable **Include source files outside of the Root Directory** (monorepo / pnpm workspace)
-9. **Node.js Version**: `20.x` (Project settings → General)
+4. **Build / Install / Output Directory**: leave all **empty** (defaults + CI prebuilt deploy)
+5. Enable **Include source files outside of the Root Directory** (monorepo / pnpm workspace)
+6. **Node.js Version**: `20.x` (Project settings → General)
 
 > Vercel auto-detects pnpm workspaces and will install at the repo root.
 
@@ -211,13 +208,19 @@ In Vercel → **Project Settings → Git → Ignored Build Step**: **clear the f
 
 Preview deployments on other branches still work via Git unless you disable them separately.
 
-### 7.3 — Create the Deploy Hook (production)
+### 7.3 — Production deploy (GitHub Actions + Vercel CLI)
 
-Project Settings → **Git** → **Deploy Hooks** → Create:
+The frontend is deployed from CI with **`vercel build` + `vercel deploy --prebuilt --prod`** (see `.github/workflows/deploy.yml`). This avoids monorepo misconfiguration on Vercel’s remote builder (plain `NOT_FOUND` on every route).
 
-- **Name**: `gh-actions-prod`
-- **Branch**: `main`
-- → Copy URL → save it as GitHub repo secret `VERCEL_DEPLOY_HOOK_URL`.
+Add these GitHub secrets (Settings → Secrets → Actions):
+
+| Secret               | Where to get it                                              |
+| -------------------- | ------------------------------------------------------------ |
+| `VERCEL_TOKEN`       | Vercel → Account Settings → **Tokens** → Create              |
+| `VERCEL_ORG_ID`      | Vercel → Team Settings → General → **Team ID** (or User ID)  |
+| `VERCEL_PROJECT_ID`  | Project → Settings → General → **Project ID**                |
+
+> Optional: keep a Deploy Hook for manual redeploys, but CI no longer uses `VERCEL_DEPLOY_HOOK_URL`.
 
 ### 7.4 — Environment variables
 
@@ -236,12 +239,12 @@ For **Preview** environment (PRs), reuse the same values pointing to your prod A
 
 Set them in **Settings → Secrets and variables → Actions → New repository secret**:
 
-| Secret                   | Where to get it                       |
-| ------------------------ | ------------------------------------- |
-| `RENDER_DEPLOY_HOOK_URL` | Render → Web Service → Deploy Hook    |
-| `VERCEL_DEPLOY_HOOK_URL` | Vercel → Project → Git → Deploy Hooks |
-
-That's it for deploys — no Vercel/Render API tokens needed because we go through deploy hooks.
+| Secret                   | Where to get it                                              |
+| ------------------------ | ------------------------------------------------------------ |
+| `RENDER_DEPLOY_HOOK_URL` | Render → Web Service → Deploy Hook                           |
+| `VERCEL_TOKEN`           | Vercel → Account Settings → Tokens                           |
+| `VERCEL_ORG_ID`          | Vercel → Team/User Settings → General → Team ID              |
+| `VERCEL_PROJECT_ID`      | Vercel → Project → Settings → General → Project ID           |
 
 ---
 
@@ -290,5 +293,6 @@ chore: bump turbo to 2.3.4
 | Render: `Cannot find module dist/main.js`   | API never built (filters above)                | Fix build command; `dist/main.js` must exist before start           |
 | Vercel: no deploy after green CI            | Missing hook secret or Deploy workflow failed  | Check Actions → **Deploy**; set `VERCEL_DEPLOY_HOOK_URL`              |
 | Vercel: hook fires but build skipped        | Ignored Build Step `exit 0` blocks hooks too     | Clear Ignored Build Step; use `apps/frontend/vercel.json` instead     |
-| Vercel: all routes `NOT_FOUND` (plain text) | Wrong **Output Directory** or Root Directory     | Root = `apps/frontend`, Output Directory **empty**, Framework = Next.js |
+| Vercel: all routes `NOT_FOUND` (plain text) | Wrong Root/Output Directory or remote builder | Root = `apps/frontend`, Output empty; use CLI prebuilt deploy in CI |
+| Vercel: Deploy job fails on secrets         | Missing `VERCEL_TOKEN` / `_ORG_ID` / `_PROJECT_ID` | Add secrets from README §7.3 / §8                          |
 | Render `/` returns 404, `/api/health` works | API only mounted under `/api/*`                  | Use `/api/health` or `/` (index JSON after latest deploy)              |
