@@ -106,17 +106,18 @@ Cookie behavior:
 
 ## 5. CI/CD overview
 
-The pipeline is a two-step process driven entirely by GitHub Actions:
+The pipeline runs in **one workflow** (`.github/workflows/ci.yml`):
 
-1. **CI** (`.github/workflows/ci.yml`) — runs on every push and PR to `main`:
-   - `pnpm install` (frozen lockfile)
-   - `prisma generate`
-   - `type-check`, `lint`, `build`, `test`, `test:e2e`
-2. **Deploy** (`.github/workflows/deploy.yml`) — runs **only when CI succeeds on a push to `main`** via `workflow_run`:
-   - Calls the **Render Deploy Hook** → rebuilds the backend
-   - Runs **`vercel build` + `vercel deploy --prebuilt --prod`** for the frontend (monorepo-safe)
+1. **Validate** — on every push/PR to `main`: install, prisma generate, type-check, lint, build, test, e2e.
+2. **Deploy** — only on **push to `main`**, after validate succeeds:
+   - **Render** via Deploy Hook
+   - **Vercel** via `vercel build` + `vercel deploy --prebuilt --prod` in GitHub Actions
 
-> Because deploys are triggered exclusively by these hooks, **you must disable the native auto-deploy** on both Vercel and Render (see below). Otherwise both providers would deploy on every push, bypassing the CI gate.
+> Vercel **n’affichera pas** de build Git automatique sur `main` (`deploymentEnabled.main: false`). Regarde **GitHub Actions → job « Deploy frontend (Vercel) »**, puis Vercel → **Deployments** quand le job est vert.
+
+> Relance manuelle : GitHub → Actions → **CI** → **Run workflow**.
+
+> Disable native auto-deploy on Render (see §6.2). Vercel Git deploys on `main` are already disabled via `apps/frontend/vercel.json`.
 
 ---
 
