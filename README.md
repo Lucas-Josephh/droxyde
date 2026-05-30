@@ -221,7 +221,7 @@ Add these GitHub secrets (Settings → Secrets → Actions):
 | `VERCEL_ORG_ID`      | Vercel → Team Settings → General → **Team ID** (or User ID)  |
 | `VERCEL_PROJECT_ID`  | Project → Settings → General → **Project ID**                |
 
-> Optional: keep a Deploy Hook for manual redeploys, but CI no longer uses `VERCEL_DEPLOY_HOOK_URL`.
+> **Root Directory** on Vercel stays `apps/frontend`. CI runs `vercel` from the **repo root** (not `apps/frontend`) to avoid the doubled path `apps/frontend/apps/frontend`.
 
 ### 7.4 — Environment variables
 
