@@ -183,11 +183,13 @@ The repo root [`render.yaml`](./render.yaml) documents the correct **build** / *
 
 1. Vercel Dashboard → **Add New** → **Project** → import this repo.
 2. **Framework Preset**: Next.js
-3. **Root Directory**: `apps/frontend` (click _Edit_ and pick the folder — not `apps/web`)
-4. **Build Command**: _(leave default, Vercel auto-detects `next build`)_
-5. **Install Command**: `pnpm install --frozen-lockfile`
-6. **Output Directory**: _(leave default)_
-7. **Node.js Version**: `20.x` (Project settings → General)
+3. **Root Directory**: `apps/frontend` (not `apps/web` — that folder does not exist)
+4. **Framework Preset**: **Next.js**
+5. **Build Command**: leave empty (uses [`apps/frontend/vercel.json`](./apps/frontend/vercel.json))
+6. **Install Command**: leave empty (same)
+7. **Output Directory**: **must be empty** — do not set `.next` or `apps/frontend/.next` (causes `X-Vercel-Error: NOT_FOUND` on every route)
+8. Enable **Include source files outside of the Root Directory** (monorepo / pnpm workspace)
+9. **Node.js Version**: `20.x` (Project settings → General)
 
 > Vercel auto-detects pnpm workspaces and will install at the repo root.
 
@@ -288,3 +290,5 @@ chore: bump turbo to 2.3.4
 | Render: `Cannot find module dist/main.js`   | API never built (filters above)                | Fix build command; `dist/main.js` must exist before start           |
 | Vercel: no deploy after green CI            | Missing hook secret or Deploy workflow failed  | Check Actions → **Deploy**; set `VERCEL_DEPLOY_HOOK_URL`              |
 | Vercel: hook fires but build skipped        | Ignored Build Step `exit 0` blocks hooks too     | Clear Ignored Build Step; use `apps/frontend/vercel.json` instead     |
+| Vercel: all routes `NOT_FOUND` (plain text) | Wrong **Output Directory** or Root Directory     | Root = `apps/frontend`, Output Directory **empty**, Framework = Next.js |
+| Render `/` returns 404, `/api/health` works | API only mounted under `/api/*`                  | Use `/api/health` or `/` (index JSON after latest deploy)              |
